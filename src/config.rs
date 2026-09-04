@@ -1319,6 +1319,32 @@ impl Config {
         true
     }
 
+    /// Set the permanent password from a trusted server push (heartbeat strategy) or
+    /// from the agent's own first-run generation. Unlike `set_permanent_password`, this
+    /// deliberately ignores `is_disable_change_permanent_password()`: that flag locks
+    /// the local user out of changing the password, but the panel stays authoritative
+    /// and must be able to seed and rotate it. The plaintext is hashed and
+    /// machine-encrypted locally exactly as a user-set password would be.
+    pub fn set_permanent_password_from_server(password: &str) -> bool {
+        let mut config = CONFIG.write().unwrap();
+        let stored = if password.is_empty() {
+            Some(String::new())
+        } else {
+            Self::compute_permanent_password_storage_for_update(&mut config, password)
+        };
+        let Some(stored) = stored else {
+            log::error!("Failed to compute permanent password storage; refusing update");
+            return false;
+        };
+        if stored == config.password {
+            return true;
+        }
+        config.password = stored;
+        config.store();
+        Self::clear_trusted_devices();
+        true
+    }
+
     fn compute_permanent_password_storage_for_update(
         config: &mut Config,
         password: &str,
