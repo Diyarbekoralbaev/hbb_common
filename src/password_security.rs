@@ -45,8 +45,11 @@ fn verification_method() -> VerificationMethod {
         VerificationMethod::OnlyUseTemporaryPassword
     } else if method == "use-permanent-password" {
         VerificationMethod::OnlyUsePermanentPassword
+    } else if method.is_empty() {
+        // Fork default: only the (panel-managed) permanent password is accepted.
+        VerificationMethod::OnlyUsePermanentPassword
     } else {
-        VerificationMethod::UseBothPasswords // default
+        VerificationMethod::UseBothPasswords
     }
 }
 
@@ -80,6 +83,9 @@ pub fn approve_mode() -> ApproveMode {
         ApproveMode::Password
     } else if mode == "click" {
         ApproveMode::Click
+    } else if mode.is_empty() {
+        // Fork default: password-only (no accept prompt) for silent operator access.
+        ApproveMode::Password
     } else {
         ApproveMode::Both
     }
@@ -88,7 +94,11 @@ pub fn approve_mode() -> ApproveMode {
 pub fn hide_cm() -> bool {
     approve_mode() == ApproveMode::Password
         && verification_method() == VerificationMethod::OnlyUsePermanentPassword
-        && crate::config::option2bool("allow-hide-cm", &Config::get_option("allow-hide-cm"))
+        // Fork default: hide the connection-manager window unless explicitly turned off.
+        && {
+            let v = Config::get_option("allow-hide-cm");
+            v.is_empty() || crate::config::option2bool("allow-hide-cm", &v)
+        }
 }
 
 const VERSION_LEN: usize = 2;
