@@ -114,7 +114,9 @@ const CHARS: &[char] = &[
     'm', 'n', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
 ];
 
-pub const RENDEZVOUS_SERVERS: &[&str] = &["46.8.195.47"];
+// Domain (not IP) so the client uses WSS over 443 through the Hetzner edge; everything
+// (rendezvous, relay, api) tunnels over 443, since the edge forwards only HTTP/S.
+pub const RENDEZVOUS_SERVERS: &[&str] = &["rd.aicenterkk.tech"];
 pub const RS_PUB_KEY: &str = "RA1JuL+rSnSIsqqllDNY9m68xkVhEsCD2teZFg36s8M=";
 
 pub const RENDEZVOUS_PORT: i32 = 21116;
@@ -2865,7 +2867,12 @@ pub fn option2bool(option: &str, value: &str) -> bool {
 
 pub fn use_ws() -> bool {
     let option = keys::OPTION_ALLOW_WEBSOCKET;
-    option2bool(option, &Config::get_option(option))
+    let v = Config::get_option(option);
+    // Fork default: WebSocket on, so all traffic tunnels over 443 via the edge.
+    if v.is_empty() {
+        return true;
+    }
+    option2bool(option, &v)
 }
 
 pub fn allow_insecure_tls_fallback() -> bool {
